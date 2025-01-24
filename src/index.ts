@@ -4,8 +4,32 @@ import { db } from "./db/index.js";
 import { habits } from "./db/schema.js";
 import { eq, sql } from "drizzle-orm";
 
+import {z} from "zod"
+
 
 const app = new Hono()
+
+const habitSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+});
+
+//testing zod
+// const habitSuccess = {
+//   title: "Book Reading",
+//   description: "read 10 pages of books",
+// };
+
+
+// const habitFails = {
+//   title: 123,
+//   description: 456,
+// };
+
+
+// console.log(habitSchema.safeParse(habitSuccess));
+// console.log(habitSchema.safeParse(habitFails));
+
 
 //retrieve all habits
 app.get('/', async (c) => {
@@ -23,12 +47,16 @@ app.get('/', async (c) => {
 // create a habit
 app.post('/habits', async (c) => {
   try {
-    const { title, description } = await c.req.json();
 
-    // validate
-    if (!title || typeof title !== 'string') {
-      return c.json({ error: 'Title is required and must be a string.' }, 400);
+    //validate
+    const body = await c.req.json();
+    const parsed = habitSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return c.json({ error: parsed.error.format() }, 400);
     }
+
+    const { title, description } = parsed.data;
 
     // insert
     const newHabit = await db.insert(habits).values({ title, description }).returning();
